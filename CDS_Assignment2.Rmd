@@ -1,0 +1,124 @@
+---
+title: "Cultural Data Science - Assignment 2"
+author: "MVT"
+date: "2024-10-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(dslabs)
+```
+
+
+# Part 1
+
+```{r}
+# Creating a dataframe for the data
+df <- data("divorce_margarine")
+```
+
+```{r}
+# Visualising relationship between divorce rate and margarine consumption
+ggplot(divorce_margarine, aes(x=margarine_consumption_per_capita, y=divorce_rate_maine)) +
+  geom_point()+
+  xlab("Margarine Consumpiton Per Capita") +
+  ylab("Divorce Rate Maine") +
+  ggtitle("Divorce Rate and Margarine Consumption") +
+  theme_minimal()
+```
+
+*Would an increase in the preference for margarine lead to skyrocketing divorce rates?*
+```{r}
+# Person's correlation test
+cor.test(x = divorce_margarine$divorce_rate_maine, y =divorce_margarine$margarine_consumption_per_capita, method="pearson")
+```
+
+Divorce rate and margarine consumption seems to be highly positively correlated as pearson's r coefficient is 0.993 with a p-value < 0.05. Correlation however cannot tell us about causation but it seems that people with larger margarine consumption are more likely to be divorced. 
+
+```{r}
+m1 <- lm(divorce_rate_maine ~ margarine_consumption_per_capita, data = divorce_margarine)
+
+summary(m1)
+```
+The following linear model supports the results of a positive correlation as it shows that each time margarine consumption increases by 1 unit, the divorce rate increases by 0.20. 
+
+# Part 2
+```{r}
+library(car)
+```
+
+```{r}
+# Importing data
+data("GSSvocab")
+```
+
+*Filter for the year 1978 and remove rows with missing values (the function na.exclude() is one way to do this – check out the documentation!).*
+```{r}
+# Cleaning dataframe
+df <- GSSvocab %>% 
+  filter(year==1978) %>% 
+  na.exclude(vocab)
+```
+
+*Is a person’s score on the vocabulary test (‘vocab’) significantly impacted by their level of education (‘educ’)? Visualize the relationship in a plot and build a model. Briefly explain the results.*
+```{r}
+# Visualising Education vs Vocabulary
+ggplot(df, aes(x=educ, y=vocab))+
+  geom_point() +
+  geom_smooth(method = "lm") +
+  xlab("Education")+
+  ylab("Vocabulary") + 
+  theme_minimal() +
+  ggtitle("Vocabulary and Education")
+```
+
+```{r}
+# Linear model of relationship between education and vocabulary
+m2 <- lm(vocab ~ educ, data = df)
+summary(m2)
+```
+
+The results indicate that for every 1 increase in education, there will be a 0.393 increase in vocabulary score. This indicates a significantly positive linear relationship between education and vocabulary score. While the predictor of education is significant, the model has quite a large residual standard error of 1.885 and R^2 is only at 0.288 indicating that only ~28% of variance is explained by the model. 
+
+*Whether a person is the native of an English-speaking country (‘nativeBorn’) could potentially have an impact on the size of their vocabulary. Visualize the relationship and add the predictor to the model. Briefly explain the results*
+```{r}
+# Visualising relationship between vocab and native born
+ggplot(df, aes(x=nativeBorn, y=vocab))+
+  geom_boxplot() +
+  xlab("Native Born")+
+  ylab("Vocabulary")+
+  ggtitle("Vocabulary for Native Born and non Native Born")+
+  theme_minimal()
+```
+
+```{r}
+# Including native born as a second predictor
+m3 <- lm(vocab ~ educ + nativeBorn, data = df)
+summary(m3)
+```
+
+Both education level and whether or not they are native born, significantly change the vocabulary level as both coefficients are significant. Results show that a person who is native born will on average have a 0.65 higher vocabulary score compared to someone with the same education level who is not native born.
+
+*Does a person’s level of education depend on whether they are a native of the country? Visualize the relationship. Do you think it makes sense to add the relationship as an interaction term? Try creating the model and briefly explain the results.*
+```{r}
+# lm model including interaction between educ and nativeborn
+m4 <- lm(vocab ~ educ*nativeBorn, data = df)
+summary(m4)
+```
+
+The interaction coefficient is not significant, indicating that education level does not depend on being native born.
+
+*Which model performs best?*
+```{r}
+# comparing the three models
+anova(m2, m3, m4)
+```
+
+By looking at the output from the anova, model 2 seems to be the best model. This can be seen as model two performs significantly better compared to model 1 and adding nativeborn as a predictor therefore seems to significantly impact vocabulary. When adding the interaction term, the model fit is not significantly improved and hence model 2 has the best fit. 
