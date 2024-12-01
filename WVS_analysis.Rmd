@@ -1,0 +1,187 @@
+---
+title: "WVS_analysis"
+author: "Marie Vestergaard Thomsen"
+date: "2024-11-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+df_wvs <- read.csv('WVS_Cross-National_Wave_7_csv_v6_0.csv')
+```
+
+```{r}
+df_wvs <- df_wvs %>% select(B_COUNTRY, Q71, Q199, Q275, Q228, Q287, Q240, Q209, Q201, Q211, Q212, Q221, Q222)
+```
+
+```{r}
+df_wvs[df_wvs < 0] <- NA
+```
+
+```{r}
+# Create a new column with the row-wise average of the specified columns
+df_wvs$pol_part <- rowMeans(df_wvs[, c("Q209", "Q201", "Q211", "Q212", "Q221", "Q222")], na.rm = TRUE)
+```
+
+```{r}
+df_wvs <- df_wvs %>% 
+  rename(Trust_gov = Q71) %>% 
+  rename(interest_politics = Q199) %>% 
+  rename(edu_level = Q275) %>% 
+  rename(income_group = Q228) %>% 
+  rename(social_class = Q287) %>% 
+  rename(polit_orient = Q240)
+```
+
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(patchwork)
+
+# Individual scatter plots
+plot_edu <- ggplot(df_wvs, aes(x = edu_level, y = pol_part)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  labs(x = "Education Level", y = "Political Participation",
+       title = "Education Level vs Political Participation") +
+  theme_minimal()
+
+plot_polit_orient <- ggplot(df_wvs, aes(x = polit_orient, y = pol_part)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  labs(x = "Political Orientation", y = "Political Participation",
+       title = "Political Orientation vs Political Participation") +
+  theme_minimal()
+
+plot_trust_gov <- ggplot(df_wvs, aes(x = Trust_gov, y = pol_part)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  labs(x = "Trust in Government", y = "Political Participation",
+       title = "Trust in Government vs Political Participation") +
+  theme_minimal()
+
+plot_income <- ggplot(df_wvs, aes(x = income_group, y = pol_part)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  labs(x = "Income Group", y = "Political Participation",
+       title = "Income Group vs Political Participation") +
+  theme_minimal()
+
+plot_social_class <- ggplot(df_wvs, aes(x = social_class, y = pol_part)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  labs(x = "Social Class", y = "Political Participation",
+       title = "Social Class vs Political Participation") +
+  theme_minimal()
+
+plot_interest_pol <- ggplot(df_wvs, aes(x = interest_politics, y = pol_part)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  labs(x = "Political Interest", y = "Political Participation",
+       title = "Political Interest vs Political Participation") +
+  theme_minimal()
+
+# Combine plots into a grid with better spacing
+combined_plot <- wrap_plots(
+  list(plot_edu, plot_polit_orient, plot_trust_gov,
+       plot_income, plot_social_class, plot_interest_pol),
+  ncol = 2,  # Force 2 columns
+  nrow = 3   # Force 3 rows
+) & 
+  theme(
+    plot.margin = margin(10, 10, 10, 10),  # Add margin around each plot
+    plot.title = element_text(size = 10),  # Adjust title size
+    axis.text = element_text(size = 5),   # Adjust axis text size
+    axis.title = element_text(size = 7)  # Adjust axis title size
+  )
+
+# Print the combined plot
+combined_plot
+
+
+```
+
+
+```{r}
+# Removing rows with NA
+df_wvs <- na.omit(df_wvs)
+```
+
+## Education level
+```{r}
+m_edu <- lm(pol_part ~ edu_level, data = df_wvs)
+summary(m1)
+```
+
+```{r}
+m_edu_orient <- lm(pol_part ~ edu_level + polit_orient, data = df_wvs)
+summary(m2)
+```
+
+```{r}
+m_edu_orientxcountry <- lm(pol_part ~ edu_level + polit_orient*B_COUNTRY, data = df_wvs)
+summary(m3)
+```
+
+
+```{r}
+anova(m1, m2, m3)
+```
+
+```{r}
+m_edu <- lm(pol_part ~ edu_level, data = df_wvs)
+m_orient <- lm(pol_part ~ polit_orient, data = df_wvs)
+m_trust <- lm(pol_part ~ Trust_gov, data = df_wvs)
+m_interest <- lm(pol_part ~ interest_politics, data=df_wvs)
+m_income <- lm(pol_part ~ income_group, data=df_wvs)
+m_class <- lm(pol_part ~ social_class, data=df_wvs)
+
+
+summary(m_orient)
+```
+
+```{r}
+library(broom)
+library(dplyr)
+
+# Collect model summaries in a single dataframe
+models <- list(m_edu, m_orient, m_trust, m_interest, m_income, m_class)
+model_summary <- purrr::map_dfr(models, glance, .id = "model") # glance provides AIC, adj.r.squared, etc.
+
+# View the summary
+model_summary
+
+```
+
+```{r}
+# Create a multiple linear regression model
+combined_model_all <- lm(pol_part ~ edu_level + polit_orient + Trust_gov + interest_politics + income_group + social_class, data = df_wvs)
+
+combined_best <- lm(pol_part ~ edu_level + interest_politics + income_group, data = df_wvs)
+
+# Summarize the model
+summary(combined_model)
+summary(combined_best)
+```
+
+```{r}
+combined_best1 <- lm(pol_part ~ edu_level + interest_politics + income_group*B_COUNTRY, data = df_wvs)
+
+combined_model_all1 <- lm(pol_part ~ edu_level + polit_orient + Trust_gov + interest_politics + income_group*B_COUNTRY + social_class, data = df_wvs)
+
+summary(combined_best1)
+summary(combined_model_all1)
+```
+
+```{r}
+anova(combined_best1, combined_model_all1, combined_best, combined_model_all)
+```
+
